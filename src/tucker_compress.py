@@ -100,11 +100,11 @@ def compress_linear_layer(layer, compression_ratio=4.0):
 
 def compress_mlp_layers(model, compression_ratios={'c_fc': 4.0, 'c_proj': 4.0}):
     """
-    Compress MLP layers in distilgpt2.
+    Compress MLP layers in GPT-style models.
     
-    For distilgpt2:
-    - transformer.layer[].ffn.lin1: projection up
-    - transformer.layer[].ffn.lin2: projection down
+    For distilgpt2/GPT2:
+    - transformer.h[i].mlp.c_fc: projection up (768 -> 3072)
+    - transformer.h[i].mlp.c_proj: projection down (3072 -> 768)
     
     Returns:
     compressed_state: Dict of compressed layers
@@ -115,28 +115,29 @@ def compress_mlp_layers(model, compression_ratios={'c_fc': 4.0, 'c_proj': 4.0}):
     original_params = 0
     compressed_params = 0
     
-    print(f"Looking for MLP layers...")
+    print(f"Searching for MLP layers...")
     
     for name, module in model.named_modules():
-        # distilgpt2 uses ffn.lin1 and ffn.lin2, not mlp.c_fc/c_proj
-        if 'ffn.lin' in name and isinstance(module, nn.Linear):
-            print(f"  Found: {name} - {module.weight.shape}")
-            
-            layer_type = 'c_fc' if 'lin1' in name else 'c_proj'
-            ratio = compression_ratios.get(layer_type, 4.0)
-            
-            compressed, reconstructed = compress_linear_layer(module, ratio)
-            compressed_state[name] = compressed
-            
-            # Parameter counts
-            orig_p = module.weight.numel() + (module.bias.numel() if module.bias is not None else 0)
-            comp_p = compressed['U'].numel() + compressed['S'].numel() + compressed['Vh'].numel()
-            
-            original_params += orig_p
-            compressed_params += comp_p
-            
-            # Replace weight with reconstructed
-            module.weight.data = reconstructed
+        # GPT2 models use mlp.c_fc and mlp.c_proj
+        if 'mlp.c_fc' in name or 'mlp.c_proj' in name:
+            if isinstance(module, nn.Linear):
+                layer_type = 'c_fc' if 'c_fc' in name else 'c_proj'
+                ratio = compression_ratios.get(layer_type, 4.0)
+                
+                print(f"  Found {name}: {module.weight.shape}")
+                
+                compressed, reconstructed = compress_linear_layer(module, ratio)
+                compressed_state[name] = compressed
+                
+                # Parameter counts
+                orig_p = module.weight.numel()
+                comp_p = compressed['U'].numel() + compressed['S'].numel() + compressed['Vh'].numel()
+                
+                original_params += orig_p
+                compressed_params += comp_p
+                
+                # Replace weight with reconstructed for testing
+                module.weight.data = reconstructed
     
     print(f"\nCompressed {len(compressed_state)} MLP layers")
     
@@ -144,7 +145,7 @@ def compress_mlp_layers(model, compression_ratios={'c_fc': 4.0, 'c_proj': 4.0}):
     original_size_mb = (original_params * 4) / (1024 * 1024)
     compressed_size_mb = (compressed_params * 4) / (1024 * 1024)
     
-    print(f"Original params: {original_params:,}, Compressed params: {compressed_params:,}")
+    print(f"Original params: {original_params:,}, Compressed: {compressed_params:,}")
     
     return compressed_state, original_size_mb, compressed_size_mb
 
