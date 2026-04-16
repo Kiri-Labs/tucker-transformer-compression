@@ -120,14 +120,18 @@ def compress_mlp_layers(model, compression_ratios={'c_fc': 4.0, 'c_proj': 4.0}):
     print(f"Searching for MLP layers...")
     
     for name, module in model.named_modules():
-        # GPT2 uses Conv1D (not nn.Linear) for projections
+        # Match GPT2 MLP layers by name only
         if 'mlp.c_fc' in name or 'mlp.c_proj' in name:
-            # Check if it has a weight attribute (Conv1D does)
-            if hasattr(module, 'weight'):
+            try:
                 layer_type = 'c_fc' if 'c_fc' in name else 'c_proj'
                 ratio = compression_ratios.get(layer_type, 4.0)
                 
-                print(f"  Found {name}: {module.weight.shape}")
+                if not hasattr(module, 'weight'):
+                    print(f"  Skipping {name}: no weight")
+                    continue
+                    
+                weight_shape = module.weight.shape
+                print(f"  Found {name}: {weight_shape}")
                 
                 compressed, reconstructed = compress_linear_layer(module, ratio)
                 compressed_state[name] = compressed
@@ -141,6 +145,11 @@ def compress_mlp_layers(model, compression_ratios={'c_fc': 4.0, 'c_proj': 4.0}):
                 
                 # Replace weight with reconstructed
                 module.weight.data = reconstructed
+                print(f"    Compressed: {orig_p:,} -> {comp_p:,} params")
+            except Exception as e:
+                print(f"  Error compressing {name}: {e}")
+                import traceback
+                traceback.print_exc()
     
     print(f"\nCompressed {len(compressed_state)} MLP layers")
     
