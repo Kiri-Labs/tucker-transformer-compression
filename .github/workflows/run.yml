@@ -1,0 +1,41 @@
+name: Tucker Compression Experiment
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        pip install torch transformers numpy tensorly
+        
+    - name: Run experiment
+      run: |
+        python src/tucker_compress.py
+        
+    - name: Commit results
+      run: |
+        git config --local user.email "research@kiri-labs.org"
+        git config --local user.name "Kiri Research Labs"
+        git add -A
+        git diff --cached --quiet || (git commit -m "[AUTO] Results" && git push)
