@@ -1,32 +1,35 @@
 # Tucker Transformer Compression
 
-**Goal:** Compress transformer MLP layers using Tucker decomposition from tensor analysis.
+**Status:** Experiment 01 Complete | 4× compression achieved
 
-**Platform:** GitHub Actions (CPU, 7GB RAM, 6hr limit)
-
-## Why Tucker Decomposition
-
-From tensor analysis (physics/mathematics) — represents tensors with core tensor + factor matrices. Better than SVD for preserving multi-way structure.
-
-**Hypothesis:** 2-4x compression on MLP weights with minimal accuracy loss.
-
-## Current Experiment
-
-| # | Name | Status | Date |
-|---|------|--------|------|
-| 01 | Baseline Tucker on distilgpt2 | **DESIGNED** | 2026-04-16 |
-
-## Structure
-
-```
-src/tucker_compress.py      # Experiment code
-.github/workflows/run.yml    # CI runner
-results/                     # Auto-committed results
-```
+Tucker decomposition for transformer MLP layer compression. From tensor analysis (physics/mathematics).
 
 ## Results
 
-*[Pending first run]*
+| Metric | Value |
+|--------|-------|
+| Model | distilgpt2 (82M params) |
+| MLP Compression | **4.01×** (108 MB → 27 MB) |
+| Layers Compressed | 12 (6 blocks × 2 projections) |
+| Baseline Perplexity | 231.67 |
+| Compressed Perplexity | 10,347.96 |
+| Quality Impact | **4367% degradation** — unacceptable without fine-tuning |
+
+## Key Finding
+
+Tucker/SVD compression works mechanically but causes massive perplexity increase at 4×. Without post-compression fine-tuning, this approach is unsuitable for LLMs.
+
+## Repository
+
+```
+src/tucker_compress.py      # Truncated SVD implementation
+results/01-tucker-baseline.json  # Full results
+.github/workflows/run.yml   # CI runner
+```
+
+## Next Direction
+
+Try lower compression ratios (2× instead of 4×) or add fine-tuning step after compression.
 
 ---
 
