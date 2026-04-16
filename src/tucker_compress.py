@@ -103,8 +103,10 @@ def compress_mlp_layers(model, compression_ratios={'c_fc': 4.0, 'c_proj': 4.0}):
     Compress MLP layers in GPT-style models.
     
     For distilgpt2/GPT2:
-    - transformer.h[i].mlp.c_fc: projection up (768 -> 3072)
-    - transformer.h[i].mlp.c_proj: projection down (3072 -> 768)
+    - transformer.h[i].mlp.c_fc: Conv1D (768, 3072)
+    - transformer.h[i].mlp.c_proj: Conv1D (3072, 768)
+    
+    Note: GPT2 uses Conv1D (custom class), not nn.Linear
     
     Returns:
     compressed_state: Dict of compressed layers
@@ -118,9 +120,10 @@ def compress_mlp_layers(model, compression_ratios={'c_fc': 4.0, 'c_proj': 4.0}):
     print(f"Searching for MLP layers...")
     
     for name, module in model.named_modules():
-        # GPT2 models use mlp.c_fc and mlp.c_proj
+        # GPT2 uses Conv1D (not nn.Linear) for projections
         if 'mlp.c_fc' in name or 'mlp.c_proj' in name:
-            if isinstance(module, nn.Linear):
+            # Check if it has a weight attribute (Conv1D does)
+            if hasattr(module, 'weight'):
                 layer_type = 'c_fc' if 'c_fc' in name else 'c_proj'
                 ratio = compression_ratios.get(layer_type, 4.0)
                 
@@ -136,7 +139,7 @@ def compress_mlp_layers(model, compression_ratios={'c_fc': 4.0, 'c_proj': 4.0}):
                 original_params += orig_p
                 compressed_params += comp_p
                 
-                # Replace weight with reconstructed for testing
+                # Replace weight with reconstructed
                 module.weight.data = reconstructed
     
     print(f"\nCompressed {len(compressed_state)} MLP layers")
