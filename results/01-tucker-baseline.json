@@ -1,0 +1,30 @@
+{
+  "experiment": "01-tucker-decomposition",
+  "model": "distilgpt2",
+  "compression_ratios": {
+    "c_fc": 4.0,
+    "c_proj": 4.0
+  },
+  "baseline": {
+    "perplexity": 231.6719,
+    "loss": 5.445322
+  },
+  "compressed": {
+    "perplexity": 10347.9623,
+    "loss": 9.244545,
+    "mlp_size_mb": 26.9015,
+    "original_mlp_size_mb": 108.0
+  },
+  "metrics": {
+    "compression_ratio": 4.01,
+    "perplexity_increase_pct": 4366.65,
+    "size_reduction_mb": 81.1
+  },
+  "details": {
+    "num_layers_compressed": 12,
+    "sample_layer_ranks": {
+      "transformer.h.0.mlp.c_fc": 153,
+      "transformer.h.0.mlp.c_proj": 153
+    }
+  }
+}
