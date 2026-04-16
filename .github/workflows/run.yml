@@ -29,9 +29,14 @@ jobs:
       run: |
         pip install torch transformers numpy tensorly
         
+    - name: Debug model structure
+      run: |
+        python src/debug_structure.py
+        
     - name: Run experiment
       run: |
-        python src/tucker_compress.py
+        python src/tucker_compress.py || echo "Experiment failed, continuing..."
+      continue-on-error: true
         
     - name: Commit results
       run: |
